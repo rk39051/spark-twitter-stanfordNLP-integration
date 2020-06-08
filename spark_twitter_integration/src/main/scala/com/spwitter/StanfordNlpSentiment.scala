@@ -22,26 +22,22 @@ object StanfordNlpSentiment {
 	  val pipeline=new StanfordCoreNLP(props);
 		pipeline.annotate(document);
 		val sentences:List[CoreMap]=document.get(classOf[CoreAnnotations.SentencesAnnotation]).asScala.toList
-		var longest=0;
-		var mainSentiment=0;
+		var total=0.0;
+		var avgSentiment=0.0;
 		var str="";
 		for(sentence <- sentences) {
 			var tree:Tree=sentence.get(classOf[SentimentAnnotatedTree]);
 			var sentiment=RNNCoreAnnotations.getPredictedClass(tree);
-			var partText=sentences.toString();
-			 if (partText.length() > longest) {
-                    mainSentiment = sentiment;
-                    longest = partText.length();
-			}
-		
+			total=total+sentiment;
 		}
-		if( mainSentiment<=1){
+		 avgSentiment=total/sentences.length
+		if( avgSentiment<2.0){
 		  str="negative"
 		}
-		if( mainSentiment==2){
+		if( avgSentiment==2.0){
 		  str="neutral"
 		}
-		if( mainSentiment>2 ){
+		if( avgSentiment>2.0 ){
 		  str="positive"
 		}
 		  return str;	

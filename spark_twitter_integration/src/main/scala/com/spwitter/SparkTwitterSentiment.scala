@@ -6,6 +6,7 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.log4j.Logger
 import org.apache.spark.streaming.Seconds
 import org.apache.log4j.Level
+import org.apache.spark.sql.SparkSession
 
 object SparkTwitterSentiment {
   def main(args:Array[String]){
@@ -31,23 +32,27 @@ object SparkTwitterSentiment {
     val filters = args.takeRight(args.length - 4) 
     
     //creating spark conf
-    val conf=new SparkConf().setAppName("twitter hashtag app").setMaster("local[*]");
+    val conf=new SparkConf().setAppName("twitter hashtag app").setMaster("local[2]");
     //creating streaming context
-    val ssc=new StreamingContext(conf,Seconds(20));
+    val ssc=new StreamingContext(conf,Seconds(30));
     //creating stream of twitter data
     val stream=TwitterUtils.createStream(ssc,None, filters);
     val filtered_stream=stream.filter(_.getLang()=="en")
     //filtering twitter hashTag
     val tweets=filtered_stream.map(status=>{
-      val tag=status.getHashtagEntities.map(_.getText.toString().toUpperCase())
       val text=status.getText();
       val sentiment=StanfordNlpSentiment.getSentiment(text)
-       (tag,sentiment,text)
+       (sentiment,text)
       
     });
     tweets.foreachRDD(rdd=>{
     //rdd.foreach{case(tag,text) => println("%s ( %s)".format(tag.mkString(""),text))}
-     rdd.foreach{case(tag,sentiment,text) => println(tag.mkString("")+"\n"+"sentiment:"+sentiment+" text:"+text)}
+    val spark=SparkSession.builder().config(rdd.sparkContext.getConf).getOrCreate();
+     import spark.implicits._
+     val df=rdd.toDF("sentiment","text");
+     df.show(false);
+     
+    
     })
     
     ssc.start();
